@@ -143,6 +143,9 @@ class ShutterCard extends HTMLElement {
           }
         )        
         
+        let initialMouseY = 0;
+        let initialPickerPosition = 0;
+        
         let mouseDown = function(event) {
             if (event.cancelable) {
               //Disable default drag event
@@ -150,6 +153,12 @@ class ShutterCard extends HTMLElement {
             }
             
             _this.isUpdating = true;
+            
+            // Capture initial mouse/touch position
+            initialMouseY = event.pageY;
+            
+            // Capture current picker position
+            initialPickerPosition = parseInt(picker.style.top) || _this.minPosition;
             
             document.addEventListener('mousemove', mouseMove);
             document.addEventListener('touchmove', mouseMove);
@@ -179,7 +188,10 @@ class ShutterCard extends HTMLElement {
         }
   
         let mouseMove = function(event) {
-          let newPosition = event.pageY - _this.getPictureTop(picture);
+          // Calculate relative movement from initial position
+          let deltaY = event.pageY - initialMouseY;
+          let newPosition = initialPickerPosition + deltaY;
+          
           _this.setPickerPosition(newPosition, picker, slide);
           
           floatingPosition.innerHTML = newPercent(newPosition) + "%";
@@ -188,7 +200,9 @@ class ShutterCard extends HTMLElement {
         let mouseUp = function(event) {
           _this.isUpdating = false;
             
-          let newPosition = event.pageY - _this.getPictureTop(picture);
+          // Calculate final position using relative movement
+          let deltaY = event.pageY - initialMouseY;
+          let newPosition = initialPickerPosition + deltaY;
           
           document.removeEventListener('mousemove', mouseMove);
           document.removeEventListener('touchmove', mouseMove);
