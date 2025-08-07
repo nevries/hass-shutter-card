@@ -647,12 +647,15 @@ class ShutterCard extends HTMLElement {
       const enabledAttr = checkbox.dataset.attr;
       const valueAttr = slider.dataset.attr;
       
-      // Set checkbox value from entity attributes
-      const enabledValue = state && state.attributes ? state.attributes[enabledAttr] : false;
+      // Set checkbox value from entity attributes - explicitly handle undefined/missing attributes
+      const enabledValue = state && state.attributes && state.attributes[enabledAttr] === true;
       checkbox.checked = enabledValue;
       
-      // Set slider value from entity attributes
-      const percentValue = state && state.attributes ? (state.attributes[valueAttr] || 0) : 0;
+      // Set slider value from entity attributes - handle missing attributes gracefully
+      let percentValue = 0;
+      if (state && state.attributes && typeof state.attributes[valueAttr] === 'number') {
+        percentValue = Math.max(0, Math.min(100, state.attributes[valueAttr]));
+      }
       slider.value = percentValue;
       valueSpan.textContent = percentValue + '%';
       
@@ -705,8 +708,10 @@ class ShutterCard extends HTMLElement {
       const enabledAttr = checkbox.dataset.attr;
       const valueAttr = slider.dataset.attr;
       
-      attributes[enabledAttr] = checkbox.checked;
-      attributes[valueAttr] = parseInt(slider.value);
+      // Explicitly set boolean values for enabled attributes
+      attributes[enabledAttr] = checkbox.checked === true;
+      // Explicitly set integer values for percentage attributes, ensuring valid range
+      attributes[valueAttr] = Math.max(0, Math.min(100, parseInt(slider.value) || 0));
     });
     
     // Update entity attributes in Home Assistant
