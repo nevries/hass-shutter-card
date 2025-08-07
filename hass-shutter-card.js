@@ -97,7 +97,10 @@ class ShutterCard extends HTMLElement {
               <ha-icon-button label="` + hass.localize(`ui.dialogs.more_info_control.cover.open_cover`) +`" class="sc-shutter-button sc-shutter-button-up" data-command="up"><ha-icon icon="mdi:arrow-up"></ha-icon></ha-icon-button>
               <ha-icon-button label="` + hass.localize(`ui.dialogs.more_info_control.cover.stop_cover`) +`"class="sc-shutter-button sc-shutter-button-stop" data-command="stop"><ha-icon icon="mdi:stop"></ha-icon></ha-icon-button>
               <ha-icon-button label="` + hass.localize(`ui.dialogs.more_info_control.cover.close_cover`) +`" class="sc-shutter-button sc-shutter-button-down" data-command="down"><ha-icon icon="mdi:arrow-down"></ha-icon></ha-icon-button>
-            </div>`:``) + 
+            </div>
+            <div class="sc-shutter-buttons" style="flex-flow: ` + (buttonsInRow ? 'row': 'column') + ` wrap;">
+              <ha-icon-button label="Configure automation" class="sc-shutter-button sc-shutter-button-config" data-command="config"><ha-icon icon="mdi:cog"></ha-icon></ha-icon-button>
+            </div>`:``) +
             `<div class="sc-shutter-selector">
               <div class="sc-shutter-selector-picture" style="width: `+ width +`px">
                 <div class="sc-shutter-selector-slide">
@@ -227,6 +230,11 @@ class ShutterCard extends HTMLElement {
             button.onclick = function () {
                 const command = this.dataset.command;
                 
+                if (command === 'config') {
+                  _this.openAutomationModal(entityId, hass);
+                  return;
+                }
+                
                 let service = '';
                 let args = ''
                 
@@ -268,6 +276,49 @@ class ShutterCard extends HTMLElement {
         allShutters.appendChild(shutter);
       });
       
+      // Add modal dialog for automation configuration
+      const modal = document.createElement('div');
+      modal.className = 'sc-automation-modal';
+      modal.innerHTML = `
+        <div class="sc-modal-overlay" style="display: none;">
+          <div class="sc-modal-content">
+            <div class="sc-modal-header">
+              <h3>Configure Automation</h3>
+              <ha-icon-button class="sc-modal-close" label="Close"><ha-icon icon="mdi:close"></ha-icon></ha-icon-button>
+            </div>
+            <div class="sc-modal-body">
+              <div class="sc-automation-row">
+                <label class="sc-automation-label">Auto Open:</label>
+                <input type="checkbox" class="sc-automation-enabled" data-attr="auto_open_enabled">
+                <input type="range" class="sc-automation-slider" data-attr="auto_open" min="0" max="100" step="1">
+                <span class="sc-automation-value">0%</span>
+              </div>
+              <div class="sc-automation-row">
+                <label class="sc-automation-label">Auto Half Open:</label>
+                <input type="checkbox" class="sc-automation-enabled" data-attr="auto_half_open_enabled">
+                <input type="range" class="sc-automation-slider" data-attr="auto_half_open" min="0" max="100" step="1">
+                <span class="sc-automation-value">0%</span>
+              </div>
+              <div class="sc-automation-row">
+                <label class="sc-automation-label">Auto Close:</label>
+                <input type="checkbox" class="sc-automation-enabled" data-attr="auto_close_enabled">
+                <input type="range" class="sc-automation-slider" data-attr="auto_close" min="0" max="100" step="1">
+                <span class="sc-automation-value">0%</span>
+              </div>
+              <div class="sc-automation-row">
+                <label class="sc-automation-label">Auto Half Close:</label>
+                <input type="checkbox" class="sc-automation-enabled" data-attr="auto_half_close_enabled">
+                <input type="range" class="sc-automation-slider" data-attr="auto_half_close" min="0" max="100" step="1">
+                <span class="sc-automation-value">0%</span>
+              </div>
+            </div>
+            <div class="sc-modal-footer">
+              <button class="sc-apply-button" type="button">Apply</button>
+            </div>
+          </div>
+        </div>
+      `;
+      allShutters.appendChild(modal);
       
       const style = document.createElement('style');
       style.textContent = `
@@ -296,6 +347,96 @@ class ShutterCard extends HTMLElement {
             .sc-shutter-label { display: inline-block; font-size: 20px; vertical-align: middle; cursor: pointer;}
             .sc-shutter-position { display: inline-block; vertical-align: middle; padding: 0 6px; margin-left: 1rem; border-radius: 2px; background-color: var(--secondary-background-color); }
             .sc-shutter-floating-position { display: none; position: absolute; width: 4ex; margin-left: auto; margin-right: auto; left: 0px; right: 0px; bottom: 0px; border-radius: 2px; background-color: var(--secondary-background-color); text-align: center; }
+          
+          .sc-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          
+          .sc-modal-content {
+            background: var(--card-background-color, white);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+          }
+          
+          .sc-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--divider-color, #e0e0e0);
+          }
+          
+          .sc-modal-header h3 {
+            margin: 0;
+            color: var(--primary-text-color, black);
+          }
+          
+          .sc-modal-body {
+            padding: 20px;
+          }
+          
+          .sc-automation-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+            gap: 12px;
+          }
+          
+          .sc-automation-label {
+            flex: 0 0 120px;
+            font-weight: 500;
+            color: var(--primary-text-color, black);
+          }
+          
+          .sc-automation-enabled {
+            flex: 0 0 auto;
+          }
+          
+          .sc-automation-slider {
+            flex: 1;
+            margin: 0 8px;
+          }
+          
+          .sc-automation-value {
+            flex: 0 0 40px;
+            text-align: right;
+            color: var(--secondary-text-color, gray);
+            font-size: 14px;
+          }
+          
+          .sc-modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--divider-color, #e0e0e0);
+            text-align: right;
+          }
+          
+          .sc-apply-button {
+            background-color: var(--primary-color, #03a9f4);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+          }
+          
+          .sc-apply-button:hover {
+            background-color: var(--primary-color-dark, #0288d1);
+          }
       `;
     
       this.card.appendChild(allShutters);
@@ -490,6 +631,97 @@ class ShutterCard extends HTMLElement {
       entity_id: entityId,
       position: position
     });
+  }
+
+  openAutomationModal(entityId, hass) {
+    const modal = this.card.querySelector('.sc-modal-overlay');
+    const state = hass.states[entityId];
+    
+    // Populate modal with current attribute values
+    const automationRows = modal.querySelectorAll('.sc-automation-row');
+    automationRows.forEach((row) => {
+      const checkbox = row.querySelector('.sc-automation-enabled');
+      const slider = row.querySelector('.sc-automation-slider');
+      const valueSpan = row.querySelector('.sc-automation-value');
+      
+      const enabledAttr = checkbox.dataset.attr;
+      const valueAttr = slider.dataset.attr;
+      
+      // Set checkbox value from entity attributes - explicitly handle undefined/missing attributes
+      const enabledValue = state && state.attributes && state.attributes[enabledAttr] === true;
+      checkbox.checked = enabledValue;
+      
+      // Set slider value from entity attributes - handle missing attributes gracefully
+      let percentValue = 0;
+      if (state && state.attributes && typeof state.attributes[valueAttr] === 'number') {
+        percentValue = Math.max(0, Math.min(100, state.attributes[valueAttr]));
+      }
+      slider.value = percentValue;
+      valueSpan.textContent = percentValue + '%';
+      
+      // Update value display when slider changes
+      slider.oninput = function() {
+        valueSpan.textContent = this.value + '%';
+      };
+    });
+    
+    // Store current entityId for apply button
+    modal.dataset.entityId = entityId;
+    
+    // Show modal
+    modal.style.display = 'flex';
+    
+    // Add event listeners if not already added
+    if (!modal.dataset.listenersAdded) {
+      const closeButton = modal.querySelector('.sc-modal-close');
+      const applyButton = modal.querySelector('.sc-apply-button');
+      
+      closeButton.onclick = () => {
+        modal.style.display = 'none';
+      };
+      
+      applyButton.onclick = () => {
+        this.applyAutomationSettings(modal, hass);
+      };
+      
+      // Close modal when clicking overlay
+      modal.onclick = (e) => {
+        if (e.target === modal) {
+          modal.style.display = 'none';
+        }
+      };
+      
+      modal.dataset.listenersAdded = 'true';
+    }
+  }
+
+  applyAutomationSettings(modal, hass) {
+    const entityId = modal.dataset.entityId;
+    const automationRows = modal.querySelectorAll('.sc-automation-row');
+    
+    const attributes = {};
+    
+    automationRows.forEach((row) => {
+      const checkbox = row.querySelector('.sc-automation-enabled');
+      const slider = row.querySelector('.sc-automation-slider');
+      
+      const enabledAttr = checkbox.dataset.attr;
+      const valueAttr = slider.dataset.attr;
+      
+      // Explicitly set boolean values for enabled attributes
+      attributes[enabledAttr] = checkbox.checked === true;
+      // Explicitly set integer values for percentage attributes, ensuring valid range
+      attributes[valueAttr] = Math.max(0, Math.min(100, parseInt(slider.value) || 0));
+    });
+    
+    // Update entity attributes in Home Assistant
+    hass.callService('homeassistant', 'update_entity', {
+      entity_id: entityId,
+      attributes: attributes
+    });
+    
+    // Close modal
+    modal.style.display = 'none';
   }
 
   setConfig(config) {
