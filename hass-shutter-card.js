@@ -635,6 +635,11 @@ class ShutterCard extends HTMLElement {
     const modal = this.card.querySelector('.sc-modal-overlay');
     const state = hass.states[entityId];
     
+    // Extract entity name from entityId and create variable entity ID
+    const entityName = entityId.replace('cover.', '');
+    const variableEntityId = `var.${entityName}-config`;
+    const variableState = hass.states[variableEntityId];
+    
     // Populate modal with current attribute values
     const automationRows = modal.querySelectorAll('.sc-automation-row');
     automationRows.forEach((row) => {
@@ -645,14 +650,17 @@ class ShutterCard extends HTMLElement {
       const enabledAttr = checkbox.dataset.attr;
       const valueAttr = slider.dataset.attr;
       
-      // Set checkbox value from entity attributes - explicitly handle undefined/missing attributes
-      const enabledValue = state && state.attributes && state.attributes[enabledAttr] === true;
+      // Set checkbox value from variable entity attributes if available, otherwise default to false
+      let enabledValue = false;
+      if (variableState && variableState.attributes && variableState.attributes[enabledAttr] === true) {
+        enabledValue = true;
+      }
       checkbox.checked = enabledValue;
       
-      // Set slider value from entity attributes - handle missing attributes gracefully
+      // Set slider value from variable entity attributes if available, otherwise default to 0
       let percentValue = 0;
-      if (state && state.attributes && typeof state.attributes[valueAttr] === 'number') {
-        percentValue = Math.max(0, Math.min(100, state.attributes[valueAttr]));
+      if (variableState && variableState.attributes && typeof variableState.attributes[valueAttr] === 'number') {
+        percentValue = Math.max(0, Math.min(100, variableState.attributes[valueAttr]));
       }
       slider.value = percentValue;
       valueSpan.textContent = percentValue + '%';
@@ -712,9 +720,15 @@ class ShutterCard extends HTMLElement {
       attributes[valueAttr] = Math.max(0, Math.min(100, parseInt(slider.value) || 0));
     });
     
-    // Note: Automation settings are stored locally in the card configuration
-    // These settings can be used by automations or other integrations that read from the card state
-    console.log('Automation settings updated for entity:', entityId, attributes);
+    // Extract entity name from entityId (remove "cover." prefix) and create variable entity ID
+    const entityName = entityId.replace('cover.', '');
+    const variableEntityId = `var.${entityName}-config`;
+    
+    // Store automation settings using HACS Variable integration
+    hass.callService('var', 'set', {
+      entity_id: variableEntityId,
+      attributes: attributes
+    });
     
     // Close modal
     modal.style.display = 'none';
