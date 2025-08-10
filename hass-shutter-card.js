@@ -97,8 +97,6 @@ class ShutterCard extends HTMLElement {
               <ha-icon-button label="` + hass.localize(`ui.dialogs.more_info_control.cover.open_cover`) +`" class="sc-shutter-button sc-shutter-button-up" data-command="up"><ha-icon icon="mdi:arrow-up"></ha-icon></ha-icon-button>
               <ha-icon-button label="` + hass.localize(`ui.dialogs.more_info_control.cover.stop_cover`) +`"class="sc-shutter-button sc-shutter-button-stop" data-command="stop"><ha-icon icon="mdi:stop"></ha-icon></ha-icon-button>
               <ha-icon-button label="` + hass.localize(`ui.dialogs.more_info_control.cover.close_cover`) +`" class="sc-shutter-button sc-shutter-button-down" data-command="down"><ha-icon icon="mdi:arrow-down"></ha-icon></ha-icon-button>
-            </div>
-            <div class="sc-shutter-buttons" style="flex-flow: ` + (buttonsInRow ? 'row': 'column') + ` wrap;">
               <ha-icon-button label="Configure automation" class="sc-shutter-button sc-shutter-button-config" data-command="config"><ha-icon icon="mdi:cog"></ha-icon></ha-icon-button>
             </div>`:``) +
             `<div class="sc-shutter-selector">
@@ -637,6 +635,11 @@ class ShutterCard extends HTMLElement {
     const modal = this.card.querySelector('.sc-modal-overlay');
     const state = hass.states[entityId];
     
+    // Extract entity name from entityId and create variable entity ID
+    const entityName = entityId.replace('cover.', '');
+    const variableEntityId = `var.${entityName}_config`;
+    const variableState = hass.states[variableEntityId];
+    
     // Populate modal with current attribute values
     const automationRows = modal.querySelectorAll('.sc-automation-row');
     automationRows.forEach((row) => {
@@ -647,14 +650,17 @@ class ShutterCard extends HTMLElement {
       const enabledAttr = checkbox.dataset.attr;
       const valueAttr = slider.dataset.attr;
       
-      // Set checkbox value from entity attributes - explicitly handle undefined/missing attributes
-      const enabledValue = state && state.attributes && state.attributes[enabledAttr] === true;
+      // Set checkbox value from variable entity attributes if available, otherwise default to false
+      let enabledValue = false;
+      if (variableState && variableState.attributes && variableState.attributes[enabledAttr] === true) {
+        enabledValue = true;
+      }
       checkbox.checked = enabledValue;
       
-      // Set slider value from entity attributes - handle missing attributes gracefully
+      // Set slider value from variable entity attributes if available, otherwise default to 0
       let percentValue = 0;
-      if (state && state.attributes && typeof state.attributes[valueAttr] === 'number') {
-        percentValue = Math.max(0, Math.min(100, state.attributes[valueAttr]));
+      if (variableState && variableState.attributes && typeof variableState.attributes[valueAttr] === 'number') {
+        percentValue = Math.max(0, Math.min(100, variableState.attributes[valueAttr]));
       }
       slider.value = percentValue;
       valueSpan.textContent = percentValue + '%';
@@ -714,9 +720,13 @@ class ShutterCard extends HTMLElement {
       attributes[valueAttr] = Math.max(0, Math.min(100, parseInt(slider.value) || 0));
     });
     
-    // Update entity attributes in Home Assistant
-    hass.callService('homeassistant', 'update_entity', {
-      entity_id: entityId,
+    // Extract entity name from entityId (remove "cover." prefix) and create variable entity ID
+    const entityName = entityId.replace('cover.', '');
+    const variableEntityId = `var.${entityName}_config`;
+    
+    // Store automation settings using HACS Variable integration
+    hass.callService('var', 'set', {
+      entity_id: variableEntityId,
       attributes: attributes
     });
     
