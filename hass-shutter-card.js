@@ -637,7 +637,7 @@ class ShutterCard extends HTMLElement {
     
     // Extract entity name from entityId and create variable entity ID
     const entityName = entityId.replace('cover.', '');
-    const variableEntityId = `var.${entityName}-config`;
+    const variableEntityId = `var.${entityName}_config`;
     const variableState = hass.states[variableEntityId];
     
     // Populate modal with current attribute values
@@ -722,7 +722,7 @@ class ShutterCard extends HTMLElement {
     
     // Extract entity name from entityId (remove "cover." prefix) and create variable entity ID
     const entityName = entityId.replace('cover.', '');
-    const variableEntityId = `var.${entityName}-config`;
+    const variableEntityId = `var.${entityName}_config`;
     
     // Store automation settings using HACS Variable integration
     hass.callService('var', 'set', {
